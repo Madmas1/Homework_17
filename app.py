@@ -1,17 +1,12 @@
 # app.py
 import json
 
-from flask import Flask, request
+import utils
+from models import request, app, db
 from flask_restx import Api, Resource
-from flask_sqlalchemy import SQLAlchemy
-from schemas import *
+from schemas import movie_schema, movies_schema, directors_schema, director_schema, genre_schema, genres_schema
 from models import Movie, Director, Genre
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['RESTX_JSON'] = {'ensure_ascii': False, 'indent': 2}
-db = SQLAlchemy(app)
 
 api = Api(app)
 
@@ -25,25 +20,30 @@ genre_ns = api.namespace("genres")
 class MoviesView(Resource):
 
     def get(self):
+        page = int(request.args.get('page', 1))
+        page_size = int(request.args.get('page_size', 10))
         did = request.args.get('director_id', None)
         gid = request.args.get('genre_id', None)
         if gid and did:
             movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                                      Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).filter(Movie.genre_id == gid, Movie.director_id == did).all()
+                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
+                     filter(Movie.genre_id == gid, Movie.director_id == did).limit(page_size).offset((page - 1) * page_size).all()
             return movies_schema.dump(movies), 200
         elif did:
             movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                 Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).filter(Movie.director_id == did).all()
+                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
+                     filter(Movie.director_id == did).limit(page_size).offset((page - 1) * page_size).all()
             return movies_schema.dump(movies), 200
         elif gid:
             movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                                      Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).filter(Movie.genre_id == gid).all()
+                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
+                     filter(Movie.genre_id == gid).limit(page_size).offset((page - 1) * page_size).all()
             return movies_schema.dump(movies), 200
 
         movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                  Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).all()
+                  Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
+                  limit(page_size).offset((page - 1) * page_size).all()
         return movies_schema.dump(movies), 200
-
 
     def post(self):
         movie_data = request.json
