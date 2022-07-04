@@ -24,26 +24,15 @@ class MoviesView(Resource):
         page_size = int(request.args.get('page_size', 10))
         did = request.args.get('director_id', None)
         gid = request.args.get('genre_id', None)
-        if gid and did:
-            movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
-                     filter(Movie.genre_id == gid, Movie.director_id == did).limit(page_size).offset((page - 1) * page_size).all()
-            return movies_schema.dump(movies), 200
-        elif did:
-            movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
-                     filter(Movie.director_id == did).limit(page_size).offset((page - 1) * page_size).all()
-            return movies_schema.dump(movies), 200
-        elif gid:
-            movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
-                     filter(Movie.genre_id == gid).limit(page_size).offset((page - 1) * page_size).all()
-            return movies_schema.dump(movies), 200
+        movies_query = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
+                     Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director)
+        if did:
+            movies_query = movies_query.filter(Movie.director_id == did)
+        if gid:
+            movies_query = movies_query.filter(Movie.genre_id == did)
 
-        movies = db.session.query(Movie.title, Movie.description, Movie.year, Movie.rating, Movie.trailer,
-                  Genre.name.label('genre'), Director.name.label('director')).join(Genre).join(Director).\
-                  limit(page_size).offset((page - 1) * page_size).all()
-        return movies_schema.dump(movies), 200
+        movies_query = utils.pagination(movies_query, page, page_size)
+        return movies_schema.dump(movies_query), 200
 
     def post(self):
         movie_data = request.json
